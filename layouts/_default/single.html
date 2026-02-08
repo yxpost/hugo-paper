@@ -19,7 +19,73 @@
     {{- end -}}
   </header>
 
-  <section>{{- .Content -}}</section>
+  <section>{{-<div id="article-wrapper">
+    <div class="post-content" id="post-content" style="filter: blur(12px); user-select: none; pointer-events: none; transition: 0.5s;">
+        {{ .Content }}
+    </div>
+
+    <div id="pay-panel" style="text-align: center; margin-top: -150px; padding: 50px 20px; background: rgba(255,255,255,0.9); position: relative; z-index: 100; border: 1px solid #eee; border-radius: 12px;">
+        <h3 style="color: #000;">🔒 阅后即焚或永久收藏</h3>
+        <p>本文需支付：<strong style="color: #1890ff;">100 枚您的代币</strong></p>
+        <button id="pay-btn" onclick="payWithMyToken()" style="background: #000; color: #fff; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
+            🦊 连接钱包支付
+        </button>
+        <p id="pay-status" style="margin-top: 15px; font-size: 13px; color: #666;"></p>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/index.umd.min.js"></script>
+
+<script>
+const CONFIG = {
+    tokenAddr: "0xd219a7a034971cb1e68342d1aca2016c02d0c913", // 你的代币合约
+    receiveAddr: "你的收款个人钱包地址", // !!!这里记得改成你的收款地址!!!
+    price: "100", 
+    decimals: 18
+};
+
+async function payWithMyToken() {
+    if (!window.ethereum) return alert("请先安装 MetaMask 钱包");
+    const status = document.getElementById('pay-status');
+    
+    try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        
+        // 代币转账 ABI
+        const abi = ["function transfer(address to, uint256 amount) public returns (bool)"];
+        const contract = new ethers.Contract(CONFIG.tokenAddr, abi, signer);
+        
+        status.innerText = "正在发起代币转账...";
+        const amount = ethers.parseUnits(CONFIG.price, CONFIG.decimals);
+        
+        const tx = await contract.transfer(CONFIG.receiveAddr, amount);
+        status.innerText = "等待区块确认 (大约 10-20 秒)...";
+        
+        await tx.wait();
+        
+        // 支付成功：移除模糊
+        status.innerText = "支付成功！感谢支持。";
+        document.getElementById('post-content').style.filter = 'none';
+        document.getElementById('post-content').style.userSelect = 'text';
+        document.getElementById('post-content').style.pointerEvents = 'auto';
+        document.getElementById('pay-panel').style.display = 'none';
+        
+        // 保存支付记录到本地
+        localStorage.setItem("paid_" + window.location.pathname, "true");
+        
+    } catch (err) {
+        status.innerText = "失败：" + (err.reason || "交易取消");
+    }
+}
+
+// 自动检测是否已支付
+if(localStorage.getItem("paid_" + window.location.pathname) === "true") {
+    document.getElementById('post-content').style.filter = 'none';
+    document.getElementById('pay-panel').style.display = 'none';
+}
+</script>
+ -}}</section>
 
   <!-- Post Tags -->
   {{- if .Params.tags -}}
